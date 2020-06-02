@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<head>
+<title>Test API </title>
+<Script>
+
+let finalText = new Map();
+let wordsArray = [];
+
+function triggerApi(elem){
+let xhttp = new XMLHttpRequest();
+xhttp.open("GET", "https://dictionary.yandex.net/api/v1/dicservice.json/lookup?key=dict.1.1.20170610T055246Z.0f11bdc42e7b693a.eefbde961e10106a4efa7d852287caa49ecc68cf&lang=en-en&text="+elem.word, true);
+xhttp.setRequestHeader("cache", "false");
+xhttp.send();
+xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == XMLHttpRequest.DONE) {   
+           if (xhttp.status == 200) {
+               finalText.set(elem.word,this.responseText);
+			   if(finalText.size == 10){
+					showResponse(finalText);
+			   }
+           }
+           else if (xhttp.status == 400) {
+              console.log("error");
+           }
+           else {
+               alert("error");
+           }
+        }
+    };
+}
+
+function showResponse(finalMap){
+	for(let keyWord of wordsArray){
+	console.log(keyWord.word);
+		if(finalMap.has(keyWord.word)){
+			let responseObject = finalMap.get(keyWord.word);
+			console.log(responseObject);
+			document.getElementById("response").innerHTML += "<h2>" + keyWord.word + " - " +keyWord.occurences+ "</h2>" + responseObject + "<hr>";
+		}
+	}
+
+}
+
+function fetchFromAPI(){
+let word = document.getElementById("inputWord").value.trim();
+if(word == ""){
+alert("Input cannot be blank");
+return false;
+}
+let xhttp = new XMLHttpRequest();
+xhttp.open("GET", "https://dictionary.yandex.net/api/v1/dicservice.json/lookup?key=dict.1.1.20170610T055246Z.0f11bdc42e7b693a.eefbde961e10106a4efa7d852287caa49ecc68cf&lang=en-en&text="+word, true);
+xhttp.setRequestHeader("cache", "false");
+xhttp.send();
+
+xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == XMLHttpRequest.DONE) {   
+           if (xhttp.status == 200) {
+               document.getElementById("inputResponse").innerHTML = "<h2>" + word + "</h2>" + this.responseText + "<hr />";
+           }
+           else if (xhttp.status == 400) {
+              console.log("error");
+           }
+           else {
+               alert("error");
+           }
+        }
+    };
+}
+
+function fetchDocument(){
+let xhttp = new XMLHttpRequest();
+xhttp.open("GET", "big.txt", true);
+xhttp.setRequestHeader("Content-type", "application/text");
+xhttp.setRequestHeader("cors", "true");
+xhttp.setRequestHeader("secure", "true");
+xhttp.setRequestHeader("cache", "false");
+xhttp.setRequestHeader("Access-Control-Allow-Origin", "*");
+xhttp.send();
+
+xhttp.onreadystatechange = function() {
+        if (xhttp.readyState == XMLHttpRequest.DONE) {   
+           if (xhttp.status == 200) {
+               processResponse(this.responseText);
+           }
+           else if (xhttp.status == 400) {
+              console.log("error");
+           }
+           else {
+               alert("error");
+           }
+        }
+    };
+}
+
+function processResponse(response){
+	 let words = response.split(/\s+/);
+	 let wordsMap = new Map();
+  for (let word of words){
+  if(word.match(/[a-zA-Z]+/g)){
+  let entryWord = word.toLowerCase();
+  
+	if(wordsMap.has(entryWord)){
+		let existingCount = wordsMap.get(entryWord);
+		existingCount++
+		wordsMap.set(entryWord,existingCount);
+	}else{
+		wordsMap.set(entryWord,1);
+	}
+  	
+  }
+  else{
+  console.log("This is not a valid word " + word);
+  }
+  
+  }
+  //wordsMap.sort((a,b)=> a - b);
+   wordsArray = [...wordsMap].map(([word, occurences]) => ({ word, occurences })); 
+wordsArray.sort(function (a, b) {
+    return b.occurences - a.occurences;
+  });
+  wordsArray = wordsArray.slice(0,10);
+console.log(wordsArray);
+	wordsArray.forEach(element => 
+	triggerApi(element)
+	);
+}
+
+function collectResponse(elem,response){
+	let finalJson = {};
+	finalJson.word = elem.word;
+	finalJson.Occurrences = elem.occurences;
+	if(response.def != null){
+		let defProperty = response.def;
+		
+		let defLen = response.def.length;
+		let definitionArray = [];
+		for(let i=0;i<defLen;i++){
+		
+		
+		let definition = {};
+		
+		if(defProperty[i].pos != null){
+			definition.pos = defProperty[i].pos;
+		}
+		if(defProperty[i].tr != null){
+		let trLen = defProperty[i].tr.length;
+		let trArray = defProperty[i].tr;
+		for(let k=0; k<trLen;k++){
+			if(trArray[k].syn != null){
+				let synLen = trArray[k].syn.length;
+				let synonyms = trArray[k].syn;
+				let synonymsArray = [];
+				for(let j=0;j<synLen;j++){
+					let synonym = {};
+					synonym.text = synonyms[j].text;
+					synonym.pos = synonyms[j].pos;
+					synonymsArray.push(synonym);
+				}
+				definition.synonyms = synonymsArray;
+			}
+			
+			}
+			}
+			definitionArray.push(definition);
+		}
+		finalJson.definitions = definitionArray;
+	}
+	
+	console.log(finalJson);
+	return JSON.stringify(finalJson);
+}
+
+</script>
+
+</head>
+<body>
+<input type='text' placeholder='Provide a word' id='inputWord' />
+<button onclick='fetchFromAPI();'> Fetch details</button>
+
+<button onclick='fetchDocument()'> Find top 10 Occurences</button>
+
+<p id='inputResponse'> </p> 
+<p id='response'></p>
+
+<p id='fetchDoc'></p>
+</body>
+
+
+
+</html>
